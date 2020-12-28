@@ -2,6 +2,7 @@ from django.core.exceptions import ValidationError
 from django.utils.translation import ugettext_lazy as _
 
 from django_filters import filters
+from vng_api_common.filters import URLModelChoiceFilter
 from vng_api_common.filtersets import FilterSet
 
 from objects.core.models import Object, ObjectType
@@ -12,19 +13,32 @@ from .validators import validate_data_attrs
 
 
 class ObjectTypeField(filters.ModelChoiceField):
+    default_error_messages = {
+        "invalid_choice": _(
+            "Select a valid object type. %(value)s is not one of the"
+            " available choices."
+        ),
+        "invalid": _("Invalid value."),
+    }
+
     def to_python(self, value):
         if value in self.empty_values:
             return None
         try:
-            value = self.queryset.get_by_url(value)
-        except (ValueError, TypeError, self.queryset.model.DoesNotExist):
+            result = self.queryset.get_by_url(value)
+        except self.queryset.model.DoesNotExist:
             raise ValidationError(
-                self.error_messages["invalid_choice"], code="invalid_choice"
+                self.error_messages["invalid_choice"],
+                code="invalid_choice",
+                params={"value": value},
             )
-        return value
+        except (ValueError, TypeError):
+            raise ValidationError(self.error_messages["invalid"], code="invalid")
+
+        return result
 
 
-class ObjectTypeFilter(filters.ModelChoiceFilter):
+class ObjectTypeFilter(URLModelChoiceFilter):
     field_class = ObjectTypeField
 
 

@@ -6,7 +6,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from vng_api_common.search import SearchMixin
 
-from objects.core.models import Object
+from objects.core.models import Object, ObjectRecord
 from objects.token.permissions import ObjectTypeBasedPermission
 
 from .filters import ObjectFilterSet
@@ -19,7 +19,11 @@ from .serializers import (
 
 
 class ObjectViewSet(SearchMixin, GeoMixin, viewsets.ModelViewSet):
-    queryset = Object.objects.prefetch_related("records").order_by("-pk")
+    queryset = (
+        Object.objects.select_related("object_type", "object_type__service")
+        .prefetch_related("records")
+        .order_by("-pk")
+    )
     serializer_class = ObjectSerializer
     filterset_class = ObjectFilterSet
     lookup_field = "uuid"
